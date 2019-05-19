@@ -2,8 +2,7 @@ import argparse
 import inotify.adapters
 import os
 import paramiko
-import logging
-logging.basicConfig()
+import stat
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src')
@@ -36,11 +35,20 @@ def setup_ssh(args):
     sftp.sshclient = client
     args.sftp = sftp
 
+
+def dir_exists(args, name):
+    try:
+        return stat.S_ISDIR(args.sftp.stat(os.path.join(args.dst, name)).st_mode)
+    except Exception as e:
+        return False
+
+
 def sync_file(args, name):
     if os.path.islink(os.path.join(args.src, name)):
         return
     args.sftp.put(os.path.join(args.src, name), os.path.join(args.dst, name))
     print('sync file', name)
+
 
 def del_file(args, name):
     try:
@@ -49,17 +57,29 @@ def del_file(args, name):
     except FileNotFoundError:
         print('file already deleted', name)
 
+
 def sync_dir(args, name):
-    args.sftp.mkdir(os.path.join(args.dst, name))
-    for f in os.listdir(os.path.join(args.dst, name)):
-        if os.path.isdir(os.path.join(args.dst, name, f)):
+    if not dir_exists(args, name):
+        args.sftp.mkdir(os.path.join(args.dst, name))
+    for f in os.listdir(os.path.join(args.src, name)):
+        if os.path.isdir(os.path.join(args.src, name, f)):
             sync_dir(args, os.path.join(name, f))
         else:
             sync_file(args, os.path.join(name, f))
     print('sync dir', name)
 
+
 def del_dir(args, name):
-    print('del dir', name)
+    if dir_exists(args, name):
+        for f in args.sftp.listdir(os.path.join(args.dst, name)):
+            if dir_exists(args, os.path.join(args.dst, name, f)):
+                del_dir(args, os.path.join(name, f))
+            else:
+                del_file(args, os.path.join(name, f))
+        args.sftp.rmdir(os.path.join(args.dst, name))
+        print('del dir', name)
+    else:
+        print(name, 'not exists skipping')
 
 
 def event_loop(args):
