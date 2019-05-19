@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--src')
 parser.add_argument('--host')
 parser.add_argument('--dst', default='.')
+parser.add_argument('--sync', default=None)
 
 args = parser.parse_args()
 
@@ -83,8 +84,6 @@ def del_dir(args, name):
 
 
 def event_loop(args):
-    print('source', args.src)
-    setup_ssh(args)
     i = inotify.adapters.InotifyTree(args.src)
     for _, types, path, fname in i.event_gen(yield_nones=False):
         isdir = 'IN_ISDIR' in types
@@ -111,5 +110,24 @@ def event_loop(args):
                 del_dir(args, relname)
             else:
                 del_file(args, relname)
+
+print('source dir', args.src)
+setup_ssh(args)
+
+print(args.sync)
+
+if args.sync is not None:
+    print('starting initial sync')
+    with open(args.sync) as flist:
+        for line in flist:
+            line = line.strip()
+            local = os.path.join(args.src, line)
+            if not os.path.exists(local) or os.path.islink(local):
+                continue
+            elif os.path.isdir(local):
+                sync_dir(args, line)
+            elif os.path.isfile(local):
+                sync_file(args, line)
+    print('initial sync complete')
 
 event_loop(args)
