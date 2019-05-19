@@ -22,6 +22,8 @@ def setup_ssh(args):
     client.load_system_host_keys()
     if 'port' not in host_config:
         host_config['port'] = 22
+    if 'user' not in host_config:
+        host_config['user'] = os.getlogin()
     key_success = False
     for key in host_config['identityfile']:
         try:
