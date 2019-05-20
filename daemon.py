@@ -4,6 +4,11 @@ import os
 import paramiko
 import stat
 
+blacklist = [
+    '.git',
+    '.svn',
+]
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--src')
 parser.add_argument('--host')
@@ -89,6 +94,9 @@ def event_loop(args):
         isdir = 'IN_ISDIR' in types
         fullname = os.path.join(path, fname)
         relname = os.path.relpath(fullname, start=args.src)
+        for pattern in blacklist:
+            if pattern in relname:
+                continue
         #print(types, fullname)
         if 'IN_CREATE' in types:
             if isdir:
