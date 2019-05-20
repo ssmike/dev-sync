@@ -50,10 +50,13 @@ def dir_exists(args, name):
 
 
 def sync_file(args, name):
-    if os.path.islink(os.path.join(args.src, name)) or not os.path.exists(os.path.join(args.src, name)):
+    if os.path.islink(os.path.join(args.src, name)):
         return
-    args.sftp.put(os.path.join(args.src, name), os.path.join(args.dst, name))
-    print('sync file', name)
+    try:
+        args.sftp.put(os.path.join(args.src, name), os.path.join(args.dst, name))
+        print('sync file', name)
+    except FileNotFoundError:
+        print("can't sync deleted", name)
 
 
 def del_file(args, name):
