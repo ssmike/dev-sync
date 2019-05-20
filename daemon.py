@@ -122,8 +122,6 @@ def event_loop(args):
 print('source dir', args.src)
 setup_ssh(args)
 
-print(args.sync)
-
 if args.sync is not None:
     print('starting initial sync')
     with open(args.sync) as flist:
