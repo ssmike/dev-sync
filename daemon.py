@@ -88,16 +88,22 @@ def del_dir(args, name):
         print(name, 'not exists skipping')
 
 
+def check_path(relpath):
+    for pattern in blacklist:
+        if pattern in relpath:
+            return True
+    return False
+
+
 def event_loop(args):
     i = inotify.adapters.InotifyTree(args.src)
     for _, types, path, fname in i.event_gen(yield_nones=False):
         isdir = 'IN_ISDIR' in types
         fullname = os.path.join(path, fname)
         relname = os.path.relpath(fullname, start=args.src)
-        for pattern in blacklist:
-            if pattern in relname:
-                continue
-        #print(types, fullname)
+        if check_path(relname):
+            continue
+        # print(types, fullname)
         if 'IN_CREATE' in types:
             if isdir:
                 sync_dir(args, relname)
