@@ -3,6 +3,9 @@ import inotify.adapters
 import os
 import paramiko
 import stat
+import logging
+
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
 blacklist = [
     '.git',
@@ -35,7 +38,7 @@ def setup_ssh(args):
             client.connect(hostname=host_config['hostname'], port=host_config['port'], username=host_config['user'], key_filename=key)
             key_success = True
         except:
-            print(key, 'is invalid')
+            logging.warn('%s is invalid', key)
     assert key_success
     sftp = client.open_sftp()
     sftp.sshclient = client
@@ -54,17 +57,17 @@ def sync_file(args, name):
         return
     try:
         args.sftp.put(os.path.join(args.src, name), os.path.join(args.dst, name))
-        print('sync file', name)
+        logging.info('syncing file %s', name)
     except FileNotFoundError:
-        print("can't sync deleted", name)
+        logging.warn("can't sync deleted %s", name)
 
 
 def del_file(args, name):
     try:
         args.sftp.remove(os.path.join(args.dst, name))
-        print('del file', name)
+        logging.info('deleting file %s', name)
     except FileNotFoundError:
-        print('file already deleted', name)
+        logging.warn('file already deleted %s', name)
 
 
 def sync_dir(args, name):
@@ -75,7 +78,7 @@ def sync_dir(args, name):
             sync_dir(args, os.path.join(name, f))
         else:
             sync_file(args, os.path.join(name, f))
-    print('sync dir', name)
+    logging.info('syncing dir %s', name)
 
 
 def del_dir(args, name):
@@ -86,9 +89,9 @@ def del_dir(args, name):
             else:
                 del_file(args, os.path.join(name, f))
         args.sftp.rmdir(os.path.join(args.dst, name))
-        print('del dir', name)
+        logging.info('deleting dir %s', name)
     else:
-        print(name, 'not exists skipping')
+        logging.warn('%s not exists skipping', name)
 
 
 def check_path(relpath):
@@ -106,7 +109,6 @@ def event_loop(args):
         relname = os.path.relpath(fullname, start=args.src)
         if check_path(relname):
             continue
-        # print(types, fullname)
         if 'IN_CREATE' in types:
             if isdir:
                 sync_dir(args, relname)
@@ -128,11 +130,12 @@ def event_loop(args):
             else:
                 del_file(args, relname)
 
-print('source dir', args.src)
+
+logging.info('source dir %s', args.src)
 setup_ssh(args)
 
 if args.sync is not None:
-    print('starting initial sync')
+    logging.info('starting initial sync')
     with open(args.sync) as flist:
         for line in flist:
             line = line.strip()
@@ -143,6 +146,6 @@ if args.sync is not None:
                 sync_dir(args, line)
             elif os.path.isfile(local):
                 sync_file(args, line)
-    print('initial sync complete')
+    logging.info('initial sync complete')
 
 event_loop(args)
