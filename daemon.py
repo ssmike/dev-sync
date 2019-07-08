@@ -106,6 +106,7 @@ def event_loop(args):
     for _, types, path, fname in i.event_gen(yield_nones=False):
         isdir = 'IN_ISDIR' in types
         fullname = os.path.join(path, fname)
+        logging.info('processing %s', fullname)
         relname = os.path.relpath(fullname, start=args.src)
         if check_path(relname):
             continue
