@@ -47,11 +47,9 @@ def setup_ssh(args):
         #try agent
         agent = paramiko.agent.Agent()
         for key in agent.get_keys():
-            print(key)
-            print(dir(key))
-            print(key.inner_key)
             if key.inner_key is None:
                 continue
+            logging.info("found usable key in ssh agent")
             client.connect(
                     hostname=host_config['hostname'],
                     port=host_config['port'],
