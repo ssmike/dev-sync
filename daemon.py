@@ -34,13 +34,32 @@ def setup_ssh(args):
     if 'user' not in host_config:
         host_config['user'] = os.getlogin()
     key_success = False
-    for key in host_config['identityfile']:
-        try:
-            client.connect(hostname=host_config['hostname'], port=host_config['port'], username=host_config['user'], key_filename=key)
-            key_success = True
-        except:
-            logging.warn('%s is invalid', key)
-    assert key_success
+
+    if 'identityfile' in host_config:
+        for key in host_config['identityfile']:
+            try:
+                client.connect(hostname=host_config['hostname'], port=host_config['port'], username=host_config['user'], key_filename=key)
+                key_success = True
+            except:
+                logging.warn('%s is invalid', key)
+        assert key_success
+    else:
+        #try agent
+        agent = paramiko.agent.Agent()
+        for key in agent.get_keys():
+            print(key)
+            print(dir(key))
+            print(key.inner_key)
+            if key.inner_key is None:
+                continue
+            client.connect(
+                    hostname=host_config['hostname'],
+                    port=host_config['port'],
+                    #username=host_config['user'], pkey=key)
+                    auth_strategy=paramiko.auth_strategy.InMemoryPrivateKey(username=host_config['user'], pkey=key))
+            break
+    
+
     sftp = client.open_sftp()
     sftp.sshclient = client
     args.sftp = sftp
@@ -135,6 +154,7 @@ def event_loop(args):
 
 logging.info('source dir %s', args.src)
 setup_ssh(args)
+logging.info('set up sftp')
 
 if args.sync is not None:
     logging.info('starting initial sync')
